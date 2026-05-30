@@ -1,8 +1,12 @@
-import { prisma } from "@/lib/prisma";
 import { seedItinerary } from "@/data/seed-itinerary";
-import type { ActivityCategory, Itinerary } from "@/types/itinerary";
+import type { Activity, ActivityCategory, Itinerary } from "@/types/itinerary";
 
 const TRIP_ID = seedItinerary.trip.id;
+const useMemoryStore = process.env.VERCEL === "1";
+
+const globalForItinerary = globalThis as unknown as {
+  itineraryMemory: Itinerary | undefined;
+};
 
 type DbActivity = {
   id: string;
@@ -18,7 +22,43 @@ type DbActivity = {
   sortOrder: number;
 };
 
+async function getPrisma() {
+  const { prisma } = await import("@/lib/prisma");
+  return prisma;
+}
+
+function cloneItinerary(source: Itinerary) {
+  return JSON.parse(JSON.stringify(source)) as Itinerary;
+}
+
+function getMemoryItinerary() {
+  globalForItinerary.itineraryMemory ??= cloneItinerary(seedItinerary as Itinerary);
+  return globalForItinerary.itineraryMemory;
+}
+
+function setMemoryItinerary(source: Itinerary) {
+  globalForItinerary.itineraryMemory = cloneItinerary(source);
+}
+
+function findMemoryActivity(id: string) {
+  const itinerary = getMemoryItinerary();
+
+  for (const day of itinerary.days) {
+    const activity = day.activities.find((item) => item.id === id);
+    if (activity) return { itinerary, day, activity };
+  }
+
+  return null;
+}
+
 async function writeItinerary(source: Itinerary) {
+  if (useMemoryStore) {
+    setMemoryItinerary(source);
+    return getItinerary();
+  }
+
+  const prisma = await getPrisma();
+
   await prisma.$transaction(async (tx) => {
     await tx.trip.deleteMany();
 
@@ -69,6 +109,12 @@ async function writeItinerary(source: Itinerary) {
 }
 
 async function ensureItinerarySeeded() {
+  if (useMemoryStore) {
+    getMemoryItinerary();
+    return;
+  }
+
+  const prisma = await getPrisma();
   const trip = await prisma.trip.findFirst({ select: { id: true } });
   if (!trip) await writeItinerary(seedItinerary as Itinerary);
 }
@@ -86,6 +132,10 @@ export async function restoreItinerary(snapshot: Itinerary) {
 }
 
 export async function getItinerary(): Promise<Itinerary> {
+  if (useMemoryStore) return cloneItinerary(getMemoryItinerary());
+
+  const prisma = await getPrisma();
+
   const trip = await prisma.trip.findFirst({
     orderBy: { id: "asc" },
     include: {
@@ -137,6 +187,16 @@ export async function updateActivity(
 ) {
   await ensureItinerarySeeded();
 
+  if (useMemoryStore) {
+    const match = findMemoryActivity(id);
+    if (!match) throw new Error("Activity not found");
+
+    Object.assign(match.activity, data);
+    return match.activity;
+  }
+
+  const prisma = await getPrisma();
+
   return prisma.activity.update({
     where: { id },
     data,
@@ -149,6 +209,27 @@ export async function updateActivity(
  */
 export async function moveActivity(id: string, targetDay: number) {
   await ensureItinerarySeeded();
+
+  if (useMemoryStore) {
+    const itinerary = getMemoryItinerary();
+    const source = findMemoryActivity(id);
+    const target = itinerary.days.find((day) => day.day === targetDay);
+
+    if (!target) return { ok: false as const, reason: "Day not found" };
+    if (!source) return { ok: false as const, reason: "Activity not found" };
+    if (source.day.id === target.id) return { ok: true as const };
+
+    source.day.activities = source.day.activities.filter((activity) => activity.id !== id);
+    const maxOrder = target.activities.reduce(
+      (max, activity) => Math.max(max, activity.sortOrder),
+      -1,
+    );
+
+    target.activities.push({ ...source.activity, sortOrder: maxOrder + 1 });
+    return { ok: true as const };
+  }
+
+  const prisma = await getPrisma();
 
   const day = await prisma.day.findUnique({
     where: { tripId_day: { tripId: TRIP_ID, day: targetDay } },
@@ -176,6 +257,34 @@ export async function moveActivity(id: string, targetDay: number) {
 
 export async function addActivity(dayNumber: number) {
   await ensureItinerarySeeded();
+
+  if (useMemoryStore) {
+    const day = getMemoryItinerary().days.find((item) => item.day === dayNumber);
+    if (!day) return null;
+
+    const maxOrder = day.activities.reduce(
+      (max, activity) => Math.max(max, activity.sortOrder),
+      -1,
+    );
+    const activity: Activity = {
+      id: crypto.randomUUID(),
+      title: "새 일정",
+      category: "activity",
+      startTime: "10:00",
+      endTime: "11:00",
+      location: "미정",
+      unitCostKRW: 0,
+      perPerson: false,
+      dmcRecommended: false,
+      note: "",
+      sortOrder: maxOrder + 1,
+    };
+
+    day.activities.push(activity);
+    return activity;
+  }
+
+  const prisma = await getPrisma();
 
   const day = await prisma.day.findUnique({
     where: { tripId_day: { tripId: seedItinerary.trip.id, day: dayNumber } },
@@ -210,11 +319,49 @@ export async function addActivity(dayNumber: number) {
 export async function deleteActivity(id: string) {
   await ensureItinerarySeeded();
 
+  if (useMemoryStore) {
+    const match = findMemoryActivity(id);
+    if (!match) throw new Error("Activity not found");
+
+    match.day.activities = match.day.activities.filter((activity) => activity.id !== id);
+    return match.activity;
+  }
+
+  const prisma = await getPrisma();
+
   return prisma.activity.delete({ where: { id } });
 }
 
 export async function reorderDayActivities(dayNumber: number, orderedIds: string[]) {
   await ensureItinerarySeeded();
+
+  if (useMemoryStore) {
+    const day = getMemoryItinerary().days.find((item) => item.day === dayNumber);
+    if (!day) return { ok: false as const, reason: "Day not found" };
+
+    const byId = new Map(day.activities.map((activity) => [activity.id, activity]));
+    const hasSameSize = orderedIds.length === byId.size;
+    const hasAllIds = orderedIds.every((id) => byId.has(id));
+
+    if (!hasSameSize || !hasAllIds) {
+      return { ok: false as const, reason: "orderedIds must match the day" };
+    }
+
+    const slots = day.activities
+      .map((activity) => ({ startTime: activity.startTime, endTime: activity.endTime }))
+      .sort((a, b) => a.startTime.localeCompare(b.startTime));
+
+    day.activities = orderedIds.map((id, index) => ({
+      ...byId.get(id)!,
+      sortOrder: index,
+      startTime: slots[index].startTime,
+      endTime: slots[index].endTime,
+    }));
+
+    return { ok: true as const };
+  }
+
+  const prisma = await getPrisma();
 
   const day = await prisma.day.findUnique({
     where: { tripId_day: { tripId: seedItinerary.trip.id, day: dayNumber } },
