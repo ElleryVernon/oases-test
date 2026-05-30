@@ -68,6 +68,11 @@ async function writeItinerary(source: Itinerary) {
   return getItinerary();
 }
 
+async function ensureItinerarySeeded() {
+  const trip = await prisma.trip.findFirst({ select: { id: true } });
+  if (!trip) await writeItinerary(seedItinerary as Itinerary);
+}
+
 export async function resetItinerary() {
   return writeItinerary(seedItinerary as Itinerary);
 }
@@ -130,6 +135,8 @@ export async function updateActivity(
     perPerson?: boolean;
   },
 ) {
+  await ensureItinerarySeeded();
+
   return prisma.activity.update({
     where: { id },
     data,
@@ -141,6 +148,8 @@ export async function updateActivity(
  * The activity is appended to the end of the target day.
  */
 export async function moveActivity(id: string, targetDay: number) {
+  await ensureItinerarySeeded();
+
   const day = await prisma.day.findUnique({
     where: { tripId_day: { tripId: TRIP_ID, day: targetDay } },
     include: { activities: true },
@@ -166,6 +175,8 @@ export async function moveActivity(id: string, targetDay: number) {
 }
 
 export async function addActivity(dayNumber: number) {
+  await ensureItinerarySeeded();
+
   const day = await prisma.day.findUnique({
     where: { tripId_day: { tripId: seedItinerary.trip.id, day: dayNumber } },
     include: { activities: true },
@@ -197,10 +208,14 @@ export async function addActivity(dayNumber: number) {
 }
 
 export async function deleteActivity(id: string) {
+  await ensureItinerarySeeded();
+
   return prisma.activity.delete({ where: { id } });
 }
 
 export async function reorderDayActivities(dayNumber: number, orderedIds: string[]) {
+  await ensureItinerarySeeded();
+
   const day = await prisma.day.findUnique({
     where: { tripId_day: { tripId: seedItinerary.trip.id, day: dayNumber } },
     include: { activities: true },
