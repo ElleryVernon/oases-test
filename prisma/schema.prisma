@@ -1,0 +1,56 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "sqlite"
+}
+
+model Trip {
+  id                 String   @id
+  origin             String
+  destination        String
+  startDate          String
+  endDate            String
+  perPersonBudgetKRW Int
+  preferences        String
+  notes              String
+  members            Member[]
+  days               Day[]
+}
+
+model Member {
+  id     String @id
+  name   String
+  age    Int
+  tripId String
+  trip   Trip   @relation(fields: [tripId], references: [id], onDelete: Cascade)
+}
+
+model Day {
+  id         String     @id
+  day        Int
+  date       String
+  tripId     String
+  trip       Trip       @relation(fields: [tripId], references: [id], onDelete: Cascade)
+  activities Activity[]
+
+  @@unique([tripId, day])
+}
+
+model Activity {
+  id             String  @id
+  title          String
+  category       String
+  startTime      String
+  endTime        String
+  location       String
+  unitCostKRW    Int
+  perPerson      Boolean
+  dmcRecommended Boolean @default(false)
+  note           String
+  sortOrder          Int
+  dayId          String
+  day            Day     @relation(fields: [dayId], references: [id], onDelete: Cascade)
+}
