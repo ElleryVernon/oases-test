@@ -1,0 +1,267 @@
+@import "tailwindcss";
+
+/*
+  Oases design system — grayscale hierarchy + a refined, muted accent set.
+  Rather than vivid primary hues, accents are desaturated and slightly
+  deepened so color reads as intentional, not loud. Each accent carries a
+  fixed meaning to reinforce data hierarchy:
+    blue   = brand / interactive / expert (DMC)
+    green  = positive status (budget headroom, kid-friendly)
+    amber  = caution (review needed)
+    red    = problem (over budget, error)
+  Gray remains the foundation for content and 4-level text hierarchy.
+*/
+@theme {
+  --color-gray-50: #f9fafb;
+  --color-gray-100: #f2f4f6;
+  --color-gray-200: #e5e8eb;
+  --color-gray-300: #d1d6db;
+  --color-gray-400: #b0b8c1;
+  --color-gray-500: #8b95a1;
+  --color-gray-600: #6b7684;
+  --color-gray-700: #4e5968;
+  --color-gray-800: #333d4b;
+  --color-gray-900: #191f28;
+
+  /* Muted brand blue — calmer and a touch deeper than Toss #3182f6 */
+  --color-blue-50: #eef3fb;
+  --color-blue-100: #d8e3f4;
+  --color-blue-200: #bcd0ec;
+  --color-blue-300: #97b6e1;
+  --color-blue-500: #3f72cf;
+  --color-blue-600: #315ba8;
+  --color-blue-700: #294c8c;
+
+  /* Muted emerald — sophisticated, not neon */
+  --color-green-50: #ebf4ef;
+  --color-green-500: #2f9c70;
+  --color-green-600: #237f5b;
+
+  /* Muted brick-rose */
+  --color-red-50: #fbecee;
+  --color-red-500: #d24a54;
+  --color-red-600: #b73a44;
+
+  /* Muted honey/ochre */
+  --color-amber-50: #f7f1e5;
+  --color-amber-500: #bd8f3e;
+  --color-amber-600: #9c7430;
+
+  /* Muted plum (kept for optional category accents) */
+  --color-violet-50: #f1eefa;
+  --color-violet-500: #6f63c4;
+
+  --font-sans: var(--font-inter), -apple-system, BlinkMacSystemFont, "Segoe UI",
+    sans-serif;
+}
+
+@layer base {
+  :root {
+    color-scheme: light;
+  }
+
+  html,
+  body {
+    height: 100%;
+  }
+
+  body {
+    background: var(--color-gray-50);
+    color: var(--color-gray-900);
+    font-family: var(--font-sans);
+    letter-spacing: -0.01em;
+    scroll-behavior: smooth;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  *:focus {
+    outline: none;
+  }
+  *:focus-visible {
+    outline: 2px solid var(--color-blue-500);
+    outline-offset: 2px;
+    border-radius: 6px;
+  }
+
+  a,
+  button:not(:disabled) {
+    cursor: pointer;
+  }
+}
+
+@layer components {
+  /* Buttons — blue reserved for the single primary action on a surface */
+  .btn-primary {
+    @apply inline-flex items-center justify-center gap-1.5 rounded-xl bg-blue-500 px-5 py-3 text-[15px] font-semibold text-white;
+    transition:
+      background-color 0.15s ease,
+      transform 0.1s ease;
+  }
+  .btn-primary:hover {
+    @apply bg-blue-600;
+  }
+  .btn-primary:active {
+    transform: scale(0.98);
+  }
+  .btn-primary:disabled {
+    @apply cursor-not-allowed bg-gray-200 text-gray-400;
+    transform: none;
+  }
+
+  .btn-secondary {
+    @apply inline-flex items-center justify-center gap-1.5 rounded-xl bg-gray-100 px-5 py-3 text-[15px] font-semibold text-gray-700;
+    transition:
+      background-color 0.15s ease,
+      transform 0.1s ease;
+  }
+  .btn-secondary:hover {
+    @apply bg-gray-200;
+  }
+  .btn-secondary:active {
+    transform: scale(0.98);
+  }
+  .btn-secondary:disabled {
+    @apply cursor-not-allowed text-gray-400 opacity-60;
+    transform: none;
+  }
+
+  .btn-ghost {
+    @apply inline-flex items-center justify-center gap-1 rounded-lg px-3 py-2 text-[14px] font-medium text-gray-500;
+    transition:
+      color 0.15s ease,
+      background-color 0.15s ease;
+  }
+  .btn-ghost:hover {
+    @apply bg-gray-100 text-gray-900;
+  }
+  .btn-ghost:disabled {
+    @apply cursor-not-allowed opacity-40;
+  }
+
+  /* Filled inputs — gray fill, focus lifts to white + ring */
+  .input {
+    @apply w-full rounded-xl bg-gray-100 px-4 py-3 text-[15px] font-medium text-gray-900;
+    @apply placeholder:text-gray-400;
+    transition:
+      background-color 0.15s ease,
+      box-shadow 0.15s ease;
+  }
+  .input:focus {
+    @apply bg-white;
+    box-shadow: 0 0 0 2px var(--color-gray-900);
+  }
+
+  /* Pills / chips */
+  .pill {
+    @apply inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[12px] font-semibold;
+  }
+
+  .chip {
+    @apply inline-flex items-center gap-1 rounded-full border border-gray-200 bg-gray-50 px-2.5 py-1 text-[12px] font-medium text-gray-600;
+  }
+
+  /* Neutral category icon chip — monochrome to keep the palette quiet */
+  .cat-icon {
+    @apply flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-gray-100 text-[17px];
+  }
+}
+
+/* Tabular figures keep money columns aligned */
+.tnum {
+  font-variant-numeric: tabular-nums;
+}
+
+/* Soft elevation used by cards and the floating summary bar */
+.elev-1 {
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+}
+.elev-2 {
+  box-shadow: 0 8px 28px rgba(17, 24, 39, 0.12);
+}
+
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+/* Entrance animation — staggered fade/slide, Toss feel */
+@keyframes oases-rise {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-rise {
+  animation: oases-rise 0.4s cubic-bezier(0.33, 1, 0.68, 1) both;
+}
+
+@keyframes oases-pop {
+  from {
+    opacity: 0;
+    transform: scale(0.96) translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+.animate-pop {
+  animation: oases-pop 0.25s cubic-bezier(0.33, 1, 0.68, 1) both;
+}
+
+@keyframes oases-fade {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.animate-fade {
+  animation: oases-fade 0.2s ease both;
+}
+
+@keyframes oases-shimmer {
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+.skeleton {
+  position: relative;
+  overflow: hidden;
+  background: var(--color-gray-100);
+}
+.skeleton::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  transform: translateX(-100%);
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(255, 255, 255, 0.6),
+    transparent
+  );
+  animation: oases-shimmer 1.4s infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-rise,
+  .animate-pop,
+  .animate-fade,
+  .skeleton::after {
+    animation: none;
+  }
+}
